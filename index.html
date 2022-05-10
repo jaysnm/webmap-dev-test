@@ -1,0 +1,223 @@
+<html>
+
+<head>
+    <title>Webmap Dev Test</title>
+    <script src='https://api.mapbox.com/mapbox-gl-js/v2.8.2/mapbox-gl.js'></script>
+    <link href='https://api.mapbox.com/mapbox-gl-js/v2.8.2/mapbox-gl.css' rel='stylesheet' />
+    <script src="https://cdn.plot.ly/plotly-2.11.1.min.js"></script>
+    <style>
+        div#map {
+            width: 100%;
+            height: 750px;
+        }
+        /* #map { position: absolute; top: 0; bottom: 0; width: 100%; } */
+        
+        .map-overlay {
+            font: 12px/20px 'Helvetica Neue', Arial, Helvetica, sans-serif;
+            position: absolute;
+            width: 520px;
+            top: 0;
+            left: 0;
+            padding: 10px;
+        }
+        
+        .map-overlay .map-overlay-inner {
+            background-color: #fff;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            border-radius: 3px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .map-overlay-inner fieldset {
+            border: none;
+            padding: 0;
+            margin: 0 0 10px;
+        }
+        
+        .map-overlay-inner fieldset:last-child {
+            margin: 0;
+        }
+        
+        .map-overlay-inner select {
+            width: 100%;
+        }
+        
+        .map-overlay-inner p {
+            margin: 0;
+        }
+        
+        .map-overlay-inner label {
+            display: block;
+            font-weight: bold;
+        }
+        
+        .map-overlay-inner button {
+            background-color: cornflowerblue;
+            color: white;
+            border-radius: 5px;
+            display: inline-block;
+            height: 20px;
+            border: none;
+            cursor: pointer;
+        }
+        
+        .map-overlay-inner button:focus {
+            outline: none;
+        }
+        
+        .map-overlay-inner button:hover {
+            background-color: blue;
+            box-shadow: inset 0 0 0 3px rgba(0, 0, 0, 0.1);
+            -webkit-transition: background-color 500ms linear;
+            -ms-transition: background-color 500ms linear;
+            transition: background-color 500ms linear;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="main">
+        <div id='map'></div>
+        <div class="map-overlay top">
+            <div class="map-overlay-inner">
+                <fieldset>
+                    <label>Select Year</label>
+                    <select id="easing">
+                        <option value="2022">2022</option>
+                    </select>
+                </fieldset>
+                <fieldset>
+                    <div id="graphic"></div>
+                </fieldset>
+                <!-- <button type="button" id="animateButton" name="test-animation">Analyze</button> -->
+            </div>
+        </div>
+    </div>
+</body>
+
+<script>
+    mapboxgl.accessToken = 'pk.eyJ1IjoiamFzb25tdXJ5IiwiYSI6ImNrdXhxdGFkYTA0cmcycGxkNG56ZHJoaGkifQ.MJ7i_ZRoingkxpBgMacNkg';
+    const map = new mapboxgl.Map({
+        container: 'map', // container ID
+        style: 'https://eahazardswatch.icpac.net/tileserver-gl/styles/droughtwatch/style.json', // style URL
+        center: [36.4, 1.2], // starting position [lng, lat]
+        zoom: 4 // starting zoom
+    });
+    map.on('load', () => {
+        // Add a new vector tile source with ID 'mapillary'.
+        map.addSource('thirdparty', {
+            'type': 'vector',
+            'tiles': [
+                'https://eahazardswatch.icpac.net/pg/tileserv/pgadapter.ea_gadm36_political_boundaries/{z}/{x}/{y}.pbf'
+            ],
+            'minzoom': 6,
+            'maxzoom': 14
+        });
+        map.addLayer({
+            'id': 'thirdparty', // Layer ID
+            'type': 'fill',
+            'source': 'thirdparty', // ID of the tile source created above
+            // Source has several layers. We visualize the one with name 'sequence'.
+            'source-layer': 'pgadapter.ea_gadm36_political_boundaries'
+        });
+        map.addSource('wms-test-source', {
+            'type': 'raster',
+            // use the tiles option to specify a WMS tile source URL
+            // https://docs.mapbox.com/mapbox-gl-js/style-spec/sources/
+            'tiles': [
+                'https://droughtwatch.icpac.net/mapserver/mukau/php/gis/mswms.php?map=mukau_w_mf&LAYERS=cdi_chirps&FORMAT=image/png&TRANSPARENT=TRUE&SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&SRS=EPSG:900913&BBOX={bbox-epsg-3857}&WIDTH=256&HEIGHT=256&STYLES=&SELECTED_YEAR=2022&SELECTED_MONTH=04&SELECTED_TENDAYS=21'
+            ],
+            'tileSize': 256
+        });
+        map.addLayer({
+            'id': 'wms-test-layer',
+            'type': 'raster',
+            'source': 'wms-test-source',
+            'paint': {}
+        });
+        map.on('click', function(e) {
+            var coordinates = e.lngLat;
+            fetch(`https://eahazardswatch.icpac.net/pg-gridapi/api/grid?x=${coordinates.lng}&y=${coordinates.lat}`)
+                .then(resp => {
+                    if (resp.ok) return resp.json();
+                    else throw new Error('Network response was not ok.');
+                })
+                .then(data => {
+                    fetch(`https://eahazardswatch.icpac.net/pg-gridapi/api/analysis/cdi_chirps?start_year=2022&end_year=2022&ts=true&aru_id=${data.aru_id}`)
+                        .then(resp => {
+                            if (resp.ok) return resp.json();
+                            else throw new Error('Network response was not ok.');
+                        })
+                        .then(data => {
+                            let trace = {
+                                date: [],
+                                alert: [],
+                                full_recovery: [],
+                                no_data: [],
+                                partial_recovery: [],
+                                warning: [],
+                                watch: []
+                            }
+                            for (let i = 0; i < data.length; i++) {
+                                trace.date.push(data[i].date);
+                                trace.alert.push(data[i].alert);
+                                trace.full_recovery.push(data[i].full_recovery);
+                                trace.no_data.push(data[i].no_data);
+                                trace.partial_recovery.push(data[i].partial_recovery);
+                                trace.warning.push(data[i].warning);
+                                trace.watch.push(data[i].watch);
+
+                            }
+                            var data = [{
+                                x: trace.date,
+                                y: trace.alert,
+                                type: 'lines+markers',
+                                name: 'Alert',
+                            }, {
+                                x: trace.date,
+                                y: trace.full_recovery,
+                                type: 'lines+markers',
+                                name: 'Full Recovery',
+                            }, {
+                                x: trace.date,
+                                y: trace.no_data,
+                                type: 'lines+markers',
+                                name: 'No Data',
+                            }, {
+                                x: trace.date,
+                                y: trace.partial_recovery,
+                                type: 'lines+markers',
+                                name: 'Partial Recovery',
+                            }, {
+                                x: trace.date,
+                                y: trace.warning,
+                                type: 'lines+markers',
+                                name: 'Warning',
+                            }, {
+                                x: trace.date,
+                                y: trace.watch,
+                                type: 'lines+markers',
+                                name: 'Watch',
+                            }];
+                            let layout = {
+                                title: 'Clicked Area Analysis!'
+                            };
+                            Plotly.newPlot('graphic', data);
+                        })
+                })
+            new mapboxgl.Popup()
+                .setLngLat(coordinates)
+                .setHTML('Check analysis graphic on the left side panel!')
+                .addTo(map);
+        });
+    });
+
+    map.addControl(new mapboxgl.NavigationControl());
+
+    function get_admin_unit(x, y) {
+
+    }
+</script>
+
+</html>
