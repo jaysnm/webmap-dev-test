@@ -172,38 +172,45 @@
                             var data = [{
                                 x: trace.date,
                                 y: trace.alert,
-                                type: 'lines+markers',
+                                type: 'bar',
                                 name: 'Alert',
                             }, {
                                 x: trace.date,
                                 y: trace.full_recovery,
-                                type: 'lines+markers',
+                                type: 'bar',
                                 name: 'Full Recovery',
                             }, {
                                 x: trace.date,
                                 y: trace.no_data,
-                                type: 'lines+markers',
+                                type: 'bar',
                                 name: 'No Data',
                             }, {
                                 x: trace.date,
                                 y: trace.partial_recovery,
-                                type: 'lines+markers',
+                                type: 'bar',
                                 name: 'Partial Recovery',
                             }, {
                                 x: trace.date,
                                 y: trace.warning,
-                                type: 'lines+markers',
+                                type: 'bar',
                                 name: 'Warning',
                             }, {
                                 x: trace.date,
                                 y: trace.watch,
-                                type: 'lines+markers',
+                                type: 'bar',
                                 name: 'Watch',
                             }];
                             let layout = {
-                                title: 'Clicked Area Analysis!'
+                                title: 'Clicked Area Analysis Graph!',
+                                xaxis: {
+                                    title: "Date"
+                                },
+                                yaxis: {
+                                    title: "% of whole region"
+                                },
+                                barmode: 'stack'
                             };
-                            Plotly.newPlot('graphic', data);
+                            Plotly.newPlot('graphic', data, layout);
                         })
                 })
             new mapboxgl.Popup()
