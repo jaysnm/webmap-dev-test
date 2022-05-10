@@ -83,7 +83,7 @@
             <div class="map-overlay-inner">
                 <fieldset>
                     <label>Select Year</label>
-                    <select id="easing">
+                    <select id="year">
                         <option value="2022">2022</option>
                     </select>
                 </fieldset>
@@ -104,6 +104,7 @@
         center: [36.4, 1.2], // starting position [lng, lat]
         zoom: 4 // starting zoom
     });
+    var year = parseInt(document.getElementById('year').value);
     map.on('load', () => {
         // Add a new vector tile source with ID 'mapillary'.
         map.addSource('thirdparty', {
@@ -126,7 +127,7 @@
             // use the tiles option to specify a WMS tile source URL
             // https://docs.mapbox.com/mapbox-gl-js/style-spec/sources/
             'tiles': [
-                'https://droughtwatch.icpac.net/mapserver/mukau/php/gis/mswms.php?map=mukau_w_mf&LAYERS=cdi_chirps&FORMAT=image/png&TRANSPARENT=TRUE&SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&SRS=EPSG:900913&BBOX={bbox-epsg-3857}&WIDTH=256&HEIGHT=256&STYLES=&SELECTED_YEAR=2022&SELECTED_MONTH=04&SELECTED_TENDAYS=21'
+                `https://droughtwatch.icpac.net/mapserver/mukau/php/gis/mswms.php?map=mukau_w_mf&LAYERS=cdi_chirps&FORMAT=image/png&TRANSPARENT=TRUE&SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&SRS=EPSG:900913&BBOX={bbox-epsg-3857}&WIDTH=256&HEIGHT=256&STYLES=&SELECTED_YEAR=${year}&SELECTED_MONTH=04&SELECTED_TENDAYS=21`
             ],
             'tileSize': 256
         });
@@ -144,7 +145,7 @@
                     else throw new Error('Network response was not ok.');
                 })
                 .then(data => {
-                    fetch(`https://eahazardswatch.icpac.net/pg-gridapi/api/analysis/cdi_chirps?start_year=2022&end_year=2022&ts=true&aru_id=${data.aru_id}`)
+                    fetch(`https://eahazardswatch.icpac.net/pg-gridapi/api/analysis/cdi_chirps?start_year=${year}&end_year=${year}&ts=true&aru_id=${data.aru_id}`)
                         .then(resp => {
                             if (resp.ok) return resp.json();
                             else throw new Error('Network response was not ok.');
